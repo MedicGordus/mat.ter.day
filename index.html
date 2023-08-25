@@ -1,97 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tools for 𝕏 Creators - mat.ter.day</title>
+    <title>Your App Name</title>
     <style>
-        @font-face {
-            font-family: 'aleo';
-            src: url('./fonts/Aleo-Light.otf') format('opentype');
-        }
-        body {
-            font-family: 'aleo', sans-serif;
-            font-size: 18px;
-            background-color: #1f1f1f;
-            color: #f1f1f1;
-            padding: 3rem 0;
+        /* Reset some default styles */
+        body, h1, h2, p, input, button {
             margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
         }
+
+        /* Base theme */
+        body {
+            background-color: #121212; /* Dark theme background */
+            color: white; /* General text color */
+            font-size: 16px;
+        }
+
+        /* Container */
         .container {
-            max-width: 800px;
+            max-width: 1000px; /* This can be adjusted */
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        a {
-            color: #4DB6AC;
-            text-decoration: none;
-            transition: 0.3s;
-        }
-        a:hover {
-            color: #00897B;
-        }
-        a:visited {
-            color: #7E57C2;
-        }
-        .tool-list {
-            list-style-type: none;
-            padding-left: 0;
-        }
-        .tool-item, h1{
-            margin-bottom: 2rem;
-            border-bottom: 1px solid #333;
-            padding-bottom: 1rem;
-        }
-        .tool-header {
-            font-size: 1.8rem;
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-        }
-        footer {
-            position: fixed;
-            bottom: 0;
+
+        /* Input Section */
+        .input-section {
+            display: flex;
+            flex-direction: column;
             width: 100%;
-            background-color: #111;
-            color: #f5f5f5;
-            text-align: center;
-            padding: 10px 0;
-            font-size: 14px;
-            border-top: 1px solid #333;
+            margin-bottom: 20px;
         }
 
-        @keyframes shimmer {
-            0% {
-                background-position: -200% 0;
-            }
-            100% {
-                background-position: 200% 0;
+        input[type="text"] {
+            padding: 10px;
+            width: 100%;
+            border: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            background-color: #1E1E1E; /* Slightly lighter than body background */
+            color: white;
+        }
+
+        /* Button with light purple accent */
+        button {
+            padding: 10px 20px;
+            background-color: #D1B2FF; /* Light purple */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #B591D6; /* A darker shade of purple for hover */
+        }
+
+        /* Responsive Media Query for Mobile */
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px; /* Slightly smaller text for mobile */
             }
         }
 
-        span.shimmer {
-            background: linear-gradient(90deg, #b7b7b7, #ffffff, #b7b7b7);
-            background-size: 200% 100%;
-            color: transparent;
-            -webkit-background-clip: text;
-            background-clip: text;
-            animation: shimmer 3s infinite;
-        }
     </style>
 </head>
+
 <body>
+
     <div class="container">
-        <h1>🚧 under construction 🚧</h1>
-        <h3>Memory creation tool for 𝕏 Content Creators</h3>
-        <ul class="tool-list">
-            <li class="tool-item">
-                <p><strong>Purpose</strong>: <span class="shimmer">Generates digital materials from memorable 𝕏 content. This tool is currently being developed. Please follow <a href="https://x.com/medicgordus">@medicgordus</a> for progress.</span></p>
-                <p><strong>Source</strong>: <a href="https://github.com/medicgordus/mat.ter.day" target="_blank">Github Repository</a></p>
-            </li>
-        </ul>
+        <h1>Welcome to Your App!</h1>
+        <p>Enter the tweet URL or ID below:</p>
+
+        <div class="input-section">
+            <input type="text" placeholder="Paste your tweet link or ID here...">
+            <button>Submit</button>
+        </div>
+
+        <!-- Additional sections can be added as needed -->
+
     </div>
+
+    <script>
+        async function requestTweet(input) {
+            let tweetId = input;
     
-    <footer>
-        Created by <a href="https://x.com/medicgordus">@medicgordus</a> using guidance from ChatGPT by <a href="https://x.com/OpenAI">@OpenAI</a>
-    </footer>
+            // If the input is a URL, try to extract the tweet ID from it
+            if (input.includes('twitter.com') || input.includes('x.com')) {
+                const urlParts = input.split('/');
+                tweetId = urlParts[urlParts.length - 1];
+            }
+            
+            const response = await fetch('RequestPost.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `tweet_id=${tweetId}`
+            });
+            
+            const data = await response.json();
+            if (data.tweet) {
+                // We have received the tweet directly
+                displayTweet(data.tweet);  // A function to handle displaying the tweet on your page
+            } else if (data.error) {
+                console.error(data.error);
+            } else {
+                // We are in the buffering state, start checking status
+                checkStatus();
+            }
+        }
+
+        async function checkStatus() {
+            const response = await fetch('StatusCheck.php');
+            const data = await response.json();
+
+            if (data.status === "request fulfilled") {
+                // Buffer has been processed, now request the tweet again
+                const tweetId = document.getElementById('tweetIdInput').value;  // Assuming you have an input field with this id for tweet ID
+                requestTweet(tweetId);
+            } else if (data.status === "spinning") {
+                // Wait for a second and check again
+                setTimeout(checkStatus, 1000);
+            } else {
+                console.error("Unexpected status:", data.status);
+            }
+        }
+
+        document.getElementById('submitTweetId').addEventListener('click', function() {
+            requestTweet(document.getElementById('tweetIdInput').value);
+        });
+    </script>
 </body>
+
 </html>

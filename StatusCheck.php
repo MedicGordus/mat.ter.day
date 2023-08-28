@@ -31,9 +31,7 @@ function processBuffer($db, $token) {
     try
     {
         // Fetch buffered tweets where request time has passed, up to 100 tweet IDs
-        $currentTimestamp = date("Y-m-d H:i:s");
-        $query = $db->prepare("SELECT DISTINCT tweet_id FROM buffer_table WHERE expire_time <= :current_timestamp LIMIT 100");
-        $query->bindParam(":current_timestamp", $currentTimestamp);
+        $query = $db->prepare("SELECT DISTINCT tweet_id FROM buffer_table WHERE expire_time <= NOW() LIMIT 100");
         $query->execute();
         $bufferedTweets = $query->fetchAll(PDO::FETCH_ASSOC);
 

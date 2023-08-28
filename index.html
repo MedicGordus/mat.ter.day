@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your App Name</title>
+    <title>Generate memorable content from 𝕏 - mat.ter.day</title>
     <style>
         /* Reset some default styles */
         body, h1, h2, p, input, button {
@@ -75,21 +75,31 @@
 <body>
 
     <div class="container">
-        <h1>Welcome to Your App!</h1>
-        <p>Enter the tweet URL or ID below:</p>
-
+        <h1>Generate memorable content from 𝕏!</h1>
+        <h2>Notes:</h2>
+        <ol>
+            <li> 𝕏 has an extreme restriction on requesting posts, so we have to buffer requests every five minutes to try to stay below the threshold. If you look at the clock, it will run at the next time the minute ends in 0 or 5. Once you click the button, you can return any time after that to check if it finished caching your requested post.</li>
+            <li> 𝕏 API currently does not match their documentation. I am not sure how to obtain profile pictures with the single post request. I need to invetistigate this further.</li>
+        </ol>
+        <hr />
+        <p>Enter the post URL below:</p>
         <div class="input-section">
-            <input id="tweetIdInput" type="text" placeholder="Paste your tweet link or ID here...">
+            <input id="tweetIdInput" type="text" placeholder="Paste your post URL here...">
             <button id="submitTweetId">Submit</button>
         </div>
-
+        <div id="status"></div>
         <div id="tweetDisplay"></div>
     </div>
 
     <script>
+        let countdown;
+
         async function requestTweet(input) {
             try
             {
+                const statusDiv = document.getElementById('status');
+                statusDiv.innerText = "Extracting Post ID...";
+
                 let tweetId = input;
         
                 // If the input is a URL, try to extract the tweet ID from it
@@ -97,6 +107,8 @@
                     const urlParts = input.split('/');
                     tweetId = urlParts[urlParts.length - 1];
                 }
+
+                statusDiv.innerText = "Sending request to server...";
                 
                 const response = await fetch('./RequestPost.php', {
                     method: 'POST',
@@ -106,54 +118,86 @@
                 
                 const data = await response.json();
                 if (data.status && data.status === 'request buffered') {
+                    statusDiv.innerText = "Request buffered. Waiting for a response...";
+
                     const currentTime = new Date().getTime();
                     const nextCacheTime = new Date(data.nextCacheTime).getTime();
                     const delay = nextCacheTime - currentTime + 1000; // Add 1 second buffer
 
-                    setTimeout(
-                        function() {
-                            // Check StatusCheck.php after the duration
-                            checkStatus();
-                        },
-                        delay
-                    );
+                    // Start a countdown timer
+                    let remainingTime = Math.round(delay / 1000,0); // in seconds
+                    clearInterval(countdown);
+                    countdown = setInterval(() => {
+                                    if (remainingTime <= 0) {
+                                        clearInterval(countdown);
+                                        statusDiv.innerText = "Checking for response...";
+                                        checkStatus();
+                                    } else {
+                                        statusDiv.innerText = `Waiting for buffered posts to cache: ${Math.floor(remainingTime / 60)}m ${remainingTime % 60}s left.`;
+                                        remainingTime--;
+                                    }
+                                }, 1000);
                 } else {
                     // We have received the tweet directly
-                    displayTweet(data.tweet);  // A function to handle displaying the tweet on your page
+                    statusDiv.innerText = "Tweet received. Displaying...";
+
+                    displayTweet(data.tweet, data.author);  // A function to handle displaying the tweet on your page
                 }
             }
             catch(err)
             {
+                statusDiv.innerText = "Error occurred: " + err.message;
                 console.error('Error, here is the message: ' + err.message)
             }
         }
 
         async function checkStatus() {
-            const response = await fetch('./StatusCheck.php');
-            const data = await response.json();
+            try
+            {
+                const statusDiv = document.getElementById('status');
+                const response = await fetch('./StatusCheck.php');
+                const data = await response.json();
 
-            if (data.status === "request fulfilled") {
-                // Buffer has been processed, now request the tweet again
-                const tweetId = document.getElementById('tweetIdInput').value;  // Assuming you have an input field with this id for tweet ID
-                requestTweet(tweetId);
-            } else if (data.status === "spinning") {
-                // Wait for a second and check again
-                setTimeout(checkStatus, 1000);
-            } else {
-                console.error("Unexpected status:", data.status);
+                if (data.status === "request fulfilled") {
+                    // Buffer has been processed, now request the tweet again
+                    statusDiv.innerText = "Tweet received. Displaying...";
+                    const tweetId = document.getElementById('tweetIdInput').value;  // Assuming you have an input field with this id for tweet ID
+                    requestTweet(tweetId);
+                } else if (data.status === "spinning") {
+                    // Wait for a second and check again
+                    statusDiv.innerText = `Extended wait for buffered posts to cache (may want to try again)...`;
+                    setTimeout(checkStatus, 1000);
+                } else {
+                    statusDiv.innerText = "Error occurred: " + err.message;
+                    console.error("Unexpected status:", data.status);
+                }
+            }
+            catch(err)
+            {
+                statusDiv.innerText = "Error occurred: " + err.message;
+                console.error('Error, here is the message: ' + err.message)
             }
         }
 
-        function displayTweet(tweetData) {
-            console.log(tweetData);
+        function displayTweet(tweetDataString, authorInfoString) {
+            const statusDiv = document.getElementById('status');
+            clearInterval(countdown);
+            statusDiv.innerText = "";
+
+            console.log('tweet=' + tweetDataString);
+            console.log('author=' + authorInfoString);
+
+            // Parse the JSON strings into JavaScript objects
+            let tweetData = JSON.parse(tweetDataString);
+            let authorInfo = JSON.parse(authorInfoString);
 
             // Assuming tweetData is a JSON object containing tweet details
             let tweetContainer = document.getElementById('tweetDisplay');
 
             // Extracting data
-            let profileImageURL = tweetData['user']['profile_image_url'];
-            let username = tweetData['user']['name'];
-            let handle = tweetData['user']['screen_name'];
+            let profileImageURL = authorInfo['profile_image_url'] || "blob:";
+            let handle = authorInfo['username'];
+            let username = authorInfo['name'];
             let tweetText = tweetData['text'];
 
             // Constructing HTML

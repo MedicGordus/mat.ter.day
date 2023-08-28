@@ -44,7 +44,12 @@ try
 
     if($result) {
         // Serve from cache
-        echo json_encode(['tweet' => $result['tweet_content']]);
+        echo json_encode(
+            [
+                'tweet' => $result['tweet_content'],
+                'author' => $result['author_info']
+            ]
+        );
         exit;
     }
 
@@ -60,13 +65,26 @@ try
     //// Not in cache, add to buffer
     //
     // Calculate the next cache time
+    //
+    //  THIS $nextCacheTime is only used for client to know how long it will be
+    //
     $nextCacheTime = (ceil(time()/300) * 300); // Rounds up to the nearest 5 minutes
     $responseTime = date('Y-m-d H:i:s', $nextCacheTime);
     //
-    $query = $db->prepare("INSERT INTO buffer_table (tweet_id, user_identifier, expire_time, request_time) VALUES (:tweet_id, :user_identifier, :expire_time, NOW())");
+    $query = $db->prepare("INSERT INTO buffer_table (
+                                tweet_id,
+                                user_identifier,
+                                expire_time,
+                                request_time
+                            ) VALUES (
+                                :tweet_id,
+                                :user_identifier,
+                                DATE_ADD(NOW(), INTERVAL 5 - MINUTE(NOW()) % 5 MINUTE),
+                                NOW()
+                            )"
+    );
     $query->bindParam(":tweet_id", $requestedTweetId);
     $query->bindParam(":user_identifier", $userIdentifier);
-    $query->bindParam(":expire_time", $nextCacheTime);
     $query->execute();
     //
     ////
@@ -75,7 +93,7 @@ try
     echo json_encode(
         [
             'status' => 'request buffered',
-            'nextCacheTime' => $responseTime
+            'nextCacheTime' => gmdate("c", $nextCacheTime)
         ]
     );
     exit;

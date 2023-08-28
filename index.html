@@ -79,44 +79,57 @@
         <p>Enter the tweet URL or ID below:</p>
 
         <div class="input-section">
-            <input type="text" placeholder="Paste your tweet link or ID here...">
-            <button>Submit</button>
+            <input id="tweetIdInput" type="text" placeholder="Paste your tweet link or ID here...">
+            <button id="submitTweetId">Submit</button>
         </div>
 
-        <!-- Additional sections can be added as needed -->
-
+        <div id="tweetDisplay"></div>
     </div>
 
     <script>
         async function requestTweet(input) {
-            let tweetId = input;
-    
-            // If the input is a URL, try to extract the tweet ID from it
-            if (input.includes('twitter.com') || input.includes('x.com')) {
-                const urlParts = input.split('/');
-                tweetId = urlParts[urlParts.length - 1];
+            try
+            {
+                let tweetId = input;
+        
+                // If the input is a URL, try to extract the tweet ID from it
+                if (input.includes('twitter.com') || input.includes('x.com')) {
+                    const urlParts = input.split('/');
+                    tweetId = urlParts[urlParts.length - 1];
+                }
+                
+                const response = await fetch('./RequestPost.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `tweet_id=${tweetId}`
+                });
+                
+                const data = await response.json();
+                if (data.status && data.status === 'request buffered') {
+                    const currentTime = new Date().getTime();
+                    const nextCacheTime = new Date(data.nextCacheTime).getTime();
+                    const delay = nextCacheTime - currentTime + 1000; // Add 1 second buffer
+
+                    setTimeout(
+                        function() {
+                            // Check StatusCheck.php after the duration
+                            checkStatus();
+                        },
+                        delay
+                    );
+                } else {
+                    // We have received the tweet directly
+                    displayTweet(data.tweet);  // A function to handle displaying the tweet on your page
+                }
             }
-            
-            const response = await fetch('RequestPost.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `tweet_id=${tweetId}`
-            });
-            
-            const data = await response.json();
-            if (data.tweet) {
-                // We have received the tweet directly
-                displayTweet(data.tweet);  // A function to handle displaying the tweet on your page
-            } else if (data.error) {
-                console.error(data.error);
-            } else {
-                // We are in the buffering state, start checking status
-                checkStatus();
+            catch(err)
+            {
+                console.error('Error, here is the message: ' + err.message)
             }
         }
 
         async function checkStatus() {
-            const response = await fetch('StatusCheck.php');
+            const response = await fetch('./StatusCheck.php');
             const data = await response.json();
 
             if (data.status === "request fulfilled") {
@@ -129,6 +142,31 @@
             } else {
                 console.error("Unexpected status:", data.status);
             }
+        }
+
+        function displayTweet(tweetData) {
+            // Assuming tweetData is a JSON object containing tweet details
+            let tweetContainer = document.getElementById('tweetDisplay');
+
+            // Extracting data
+            let profileImageURL = tweetData['user']['profile_image_url'];
+            let username = tweetData['user']['name'];
+            let handle = tweetData['user']['screen_name'];
+            let tweetText = tweetData['text'];
+
+            // Constructing HTML
+            let tweetHTML = `
+                <div class="tweet">
+                    <img src="${profileImageURL}" alt="${username}" class="profile-pic">
+                    <div class="tweet-content">
+                        <strong>${username}</strong> <span>@${handle}</span>
+                        <p>${tweetText}</p>
+                    </div>
+                </div>
+            `;
+
+            // Inserting the tweet HTML into the tweetContainer
+            tweetContainer.innerHTML = tweetHTML;
         }
 
         document.getElementById('submitTweetId').addEventListener('click', function() {

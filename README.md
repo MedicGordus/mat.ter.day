@@ -11,11 +11,13 @@ This tool helps people generate digital memories from 𝕏 content and interacti
 43200 min    4.32 min
 
 ## secrets
-keyfile.json should be like so:
+secrets.json should be like so:
 {
-    "key":"get your api key from https://developer.twitter.com/en/portal/dashboard",
-    "secret":"get your api secret from https://developer.twitter.com/en/portal/dashboard"
+    "bearer-token":"get your bearer token from https://developer.twitter.com/en/portal/dashboard",
+    "db-host":"",
+    "db-name":"",
+    "db-user":"",
+    "db-password":""
 }
 
-## todo
-Next step is to pull profile id of the 𝕏 poster.
+Make sure to block access to this file, or move the secrets into your PHP files.

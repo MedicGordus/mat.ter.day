@@ -21,6 +21,8 @@ try {
     $createBufferTable = "
     CREATE TABLE buffer_table (
         tweet_id VARCHAR(255) NOT NULL PRIMARY KEY,
+        user_identifier VARCHAR(255) NOT NULL
+        expire_time TIMESTAMP NOT NULL
         request_time TIMESTAMP NOT NULL
     )";
     $db->exec($createBufferTable);
@@ -31,6 +33,7 @@ try {
     CREATE TABLE tweets_cache_table (
         tweet_id VARCHAR(255) NOT NULL PRIMARY KEY,
         tweet_content JSON NOT NULL,
+        author_info JSON NOT NULL,
         timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )";
     $db->exec($createTweetsCacheTable);

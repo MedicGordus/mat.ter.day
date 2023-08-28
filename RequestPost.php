@@ -37,7 +37,7 @@ try
     }
 
     // Check cache first
-    $query = $db->prepare("SELECT tweet_content FROM tweets_cache_table WHERE tweet_id = :tweet_id");
+    $query = $db->prepare("SELECT tweet_content, author_info FROM tweets_cache_table WHERE tweet_id = :tweet_id");
     $query->bindParam(":tweet_id", $requestedTweetId);
     $query->execute();
     $result = $query->fetch();

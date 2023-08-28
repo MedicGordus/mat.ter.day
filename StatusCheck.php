@@ -38,32 +38,55 @@ function processBuffer($db, $token) {
         $bufferedTweets = $query->fetchAll(PDO::FETCH_ASSOC);
 
         // If there are no tweets in the buffer, just return
-        if(empty($bufferedTweets)){
+        if(count($bufferedTweets) === 0)
+        {
             echo json_encode(['status' => "spinning"]);
-            return;
+            exit;
         }
 
         // Generate comma-separated list of IDs
         $filteredTweetIds = array_filter(array_column($bufferedTweets, 'tweet_id'));
         $tweetIds = implode(",", $filteredTweetIds);
 
+        if($tweetIds == "")
+        {
+            echo json_encode(['status' => "spinning"]);
+            exit;
+        }
+
         // Fetch from Twitter API
         $tweetsContent = fetchFromTwitterAPI($tweetIds, $token);
         $tweetsData = json_decode($tweetsContent, true)['data'];
+        $tweetsUsers = json_decode($tweetsContent, true)['includes']['users'];
 
-        # TEST
-        echo "TWITTER CONTENT = ". $tweetsContent;
+        // Create a mapping from author_id to user object
+        $authorIdToUser = [];
+        foreach ($tweetsUsers as $user) {
+            $authorIdToUser[$user['id']] = $user;
+        }
+
+
+        # TEST to make sure the api is working
+        #echo "TWITTER CONTENT = ". $tweetsContent;
 
         foreach ($tweetsData as $tweet) {
+            // Fetch the corresponding author info using the tweet's author_id
+            $author_info = $authorIdToUser[$tweet['author_id']] ?? null;
+            if (!$author_info) {
+                // If for some reason there's no corresponding user info, skip processing this tweet.
+                continue;
+            }
+    
             // Store in cache
             $tweetId = $tweet['id'];
-            $store = $db->prepare("INSERT INTO tweets_cache_table (tweet_id, tweet_content, timestamp) VALUES (:tweet_id, :tweet_content, NOW())");
+            $store = $db->prepare("INSERT INTO tweets_cache_table (tweet_id, tweet_content, author_info, timestamp) VALUES (:tweet_id, :tweet_content, :author_info, NOW())");
             $store->bindParam(":tweet_id", $tweetId);
             $store->bindParam(":tweet_content", json_encode($tweet));
+            $store->bindParam(":author_info", json_encode($author_info));
             $store->execute();
 
             // Remove from buffer
-            $delete = $db->prepare("DELETE FROM buffer_table WHERE tweet_id = :tweet_id");
+            $delete = $db->prepare("DELETE FROM buffer_table WHERE tweet_id = :tweet_id OR tweet_id is NULL or tweet_id = ''");
             $delete->bindParam(":tweet_id", $tweetId);
             $delete->execute();
         }

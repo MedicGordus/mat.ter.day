@@ -122,6 +122,9 @@ function fetchFromTwitterAPI($tweetIds, $token) {
 }
 
 function handleError($err, $method) {
-    echo $method . ": " . $err->getMessage();
+    # test purposes only
+    # echo $method . ": " . $err->getMessage();
+    throw new Exception($method . ": " . $err->getMessage());
+
 }
 ?>

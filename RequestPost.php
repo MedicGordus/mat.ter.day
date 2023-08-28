@@ -79,7 +79,7 @@ try
                             ) VALUES (
                                 :tweet_id,
                                 :user_identifier,
-                                DATE_ADD(NOW(), INTERVAL 5 - MINUTE(NOW()) % 5 MINUTE),
+                                STR_TO_DATE(DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:00'), '%Y-%m-%d %H:%i:%s') + INTERVAL (5 - MINUTE(NOW()) % 5) MINUTE,
                                 NOW()
                             )"
     );
@@ -119,6 +119,8 @@ function isValidTweetId($tweetId) {
 }
 
 function handleError($err, $method) {
-    echo $method . ": " . $err->getMessage();
+    # test purposes only
+    # echo $method . ": " . $err->getMessage();
+    throw new Exception($method . ": " . $err->getMessage());
 }
 ?>
